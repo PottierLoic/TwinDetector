@@ -69,10 +69,12 @@ void pingAndLog(const std::string& ip) {
     dateStream << std::put_time(now_tm, "%d_%m_%Y");
     std::string dateStr = dateStream.str();
 
-    #if defined(_WIN32)
+      #if defined(_WIN32)
     std::string logDir = "logs\\" + ip;
+    std::string globalLogFilePath = "logs\\warn.txt";
     #else
     std::string logDir = "logs/" + ip;
+    std::string globalLogFilePath = "logs/warn.txt";
     #endif
     std::string logFileName = "log" + dateStr + ".txt";
     std::string logFilePath = logDir + "\\" + logFileName;
@@ -98,6 +100,13 @@ void pingAndLog(const std::string& ip) {
       auto it = lastMacAddresses.find(ip);
       if (it != lastMacAddresses.end() && it->second != currentMac && currentMac != "MAC Address not found") {
         warningMessage = " Warning: MAC address changed from " + it->second + " to " + currentMac;
+        std::ofstream globalLogFile(globalLogFilePath, std::ios_base::app);
+        if (globalLogFile.is_open()) {
+          globalLogFile << std::put_time(now_tm, "%c") << " - " << ip << " - " << warningMessage << ". Detailed log in: " << logFilePath << std::endl;
+          globalLogFile.close();
+        } else {
+          std::cerr << "Unable to open global log file for writing." << std::endl;
+        }
       }
       lastMacAddresses[ip] = currentMac;
     }
