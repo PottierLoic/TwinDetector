@@ -14,6 +14,25 @@
 std::mutex logMutex;
 std::map<std::string, std::string> lastMacAddresses; // Key: IP address, Value: Last seen MAC address
 
+void manageLogFiles(const std::string& directoryPath) {
+  std::vector<std::filesystem::path> logFiles;
+
+  for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
+    if (entry.is_regular_file()) {
+      logFiles.push_back(entry.path());
+    }
+  }
+
+  std::sort(logFiles.begin(), logFiles.end(), [](const std::filesystem::path& a, const std::filesystem::path& b) {
+    return std::filesystem::last_write_time(a) < std::filesystem::last_write_time(b);
+  });
+
+  while (logFiles.size() > 50) {
+    std::filesystem::remove(logFiles.front());
+    logFiles.erase(logFiles.begin());
+  }
+}
+
 std::string trim(const std::string& str) {
   size_t first = str.find_first_not_of(' ');
   if (std::string::npos == first) {
@@ -67,6 +86,8 @@ void pingAndLog(const std::string& ip) {
 
     std::ostringstream dateStream;
     dateStream << std::put_time(now_tm, "%d_%m_%Y");
+    int minute = now_tm->tm_min - (now_tm->tm_min % 10);
+    dateStream << "_" << std::setfill('0') << std::setw(2) << now_tm->tm_hour << std::setw(2) << minute;
     std::string dateStr = dateStream.str();
 
       #if defined(_WIN32)
@@ -80,6 +101,7 @@ void pingAndLog(const std::string& ip) {
     std::string logFilePath = logDir + "\\" + logFileName;
 
     std::filesystem::create_directories(logDir);
+    manageLogFiles(logDir);
 
     #if defined(_WIN32)
     std::string pingCommand = "ping -n 1 " + ip;
